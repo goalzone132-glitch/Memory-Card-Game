@@ -1,0 +1,678 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Neon Memory Match — Play & Win</title>
+<style>
+  :root{
+    --bg-1:#0b0e1a;
+    --bg-2:#141a2e;
+    --neon-pink:#ff2e9a;
+    --neon-blue:#00e5ff;
+    --neon-purple:#a259ff;
+    --neon-green:#39ff8f;
+    --glass-bg:rgba(255,255,255,0.06);
+    --glass-border:rgba(255,255,255,0.14);
+    --text-main:#eef1ff;
+    --text-dim:#9aa3c7;
+  }
+
+  *{box-sizing:border-box;}
+
+  body{
+    margin:0;
+    min-height:100vh;
+    font-family:'Segoe UI', Roboto, system-ui, -apple-system, sans-serif;
+    background:
+      radial-gradient(circle at 15% 10%, rgba(162,89,255,0.25), transparent 40%),
+      radial-gradient(circle at 85% 15%, rgba(0,229,255,0.18), transparent 40%),
+      radial-gradient(circle at 50% 90%, rgba(255,46,154,0.15), transparent 45%),
+      linear-gradient(180deg, var(--bg-1), var(--bg-2));
+    color:var(--text-main);
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    padding:16px;
+    overflow-x:hidden;
+  }
+
+  /* ===================== AD SLOTS ===================== */
+  .ad-slot{
+    width:100%;
+    max-width:728px;
+    background:var(--glass-bg);
+    border:1px dashed var(--glass-border);
+    border-radius:14px;
+    color:var(--text-dim);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    text-align:center;
+    font-size:13px;
+    letter-spacing:0.5px;
+    backdrop-filter:blur(10px);
+  }
+
+  .ad-top{
+    min-height:90px;
+    margin-bottom:18px;
+    padding:8px;
+  }
+  .ad-top small{display:block;margin-top:4px;opacity:0.7;}
+
+  /* ===================== HEADER ===================== */
+  header{
+    width:100%;
+    max-width:520px;
+    text-align:center;
+    margin-bottom:14px;
+  }
+
+  h1{
+    font-size:clamp(22px,5vw,32px);
+    margin:0 0 4px;
+    background:linear-gradient(90deg,var(--neon-pink),var(--neon-blue),var(--neon-purple));
+    -webkit-background-clip:text;
+    background-clip:text;
+    color:transparent;
+    text-shadow:0 0 30px rgba(0,229,255,0.25);
+    letter-spacing:1px;
+  }
+
+  header p{
+    margin:0;
+    color:var(--text-dim);
+    font-size:13px;
+  }
+
+  /* ===================== STATS BAR ===================== */
+  .stats{
+    width:100%;
+    max-width:520px;
+    display:flex;
+    justify-content:space-between;
+    gap:10px;
+    margin-bottom:16px;
+  }
+
+  .stat-box{
+    flex:1;
+    background:var(--glass-bg);
+    border:1px solid var(--glass-border);
+    border-radius:14px;
+    padding:10px 8px;
+    text-align:center;
+    backdrop-filter:blur(10px);
+  }
+
+  .stat-box .label{
+    font-size:11px;
+    color:var(--text-dim);
+    text-transform:uppercase;
+    letter-spacing:1px;
+    margin-bottom:2px;
+  }
+
+  .stat-box .value{
+    font-size:20px;
+    font-weight:700;
+    color:var(--neon-blue);
+    text-shadow:0 0 12px rgba(0,229,255,0.6);
+  }
+
+  #timer-box .value{color:var(--neon-green);text-shadow:0 0 12px rgba(57,255,143,0.6);}
+  #moves-box .value{color:var(--neon-pink);text-shadow:0 0 12px rgba(255,46,154,0.6);}
+  #matches-box .value{color:var(--neon-purple);text-shadow:0 0 12px rgba(162,89,255,0.6);}
+
+  /* ===================== BOARD ===================== */
+  .board{
+    display:grid;
+    grid-template-columns:repeat(4, 1fr);
+    gap:10px;
+    width:100%;
+    max-width:520px;
+    margin-bottom:18px;
+  }
+
+  .card{
+    aspect-ratio:1/1;
+    perspective:1000px;
+    cursor:pointer;
+  }
+
+  .card-inner{
+    position:relative;
+    width:100%;
+    height:100%;
+    transition:transform 0.5s cubic-bezier(0.4,0.2,0.2,1);
+    transform-style:preserve-3d;
+  }
+
+  .card.flipped .card-inner,
+  .card.matched .card-inner{
+    transform:rotateY(180deg);
+  }
+
+  .card-face{
+    position:absolute;
+    inset:0;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    border-radius:14px;
+    backface-visibility:hidden;
+    font-size:clamp(26px,7vw,38px);
+    user-select:none;
+  }
+
+  .card-front{
+    background:linear-gradient(145deg, rgba(255,255,255,0.08), rgba(255,255,255,0.02));
+    border:1px solid var(--glass-border);
+    backdrop-filter:blur(6px);
+  }
+
+  .card-front::after{
+    content:"?";
+    color:var(--text-dim);
+    font-weight:800;
+    font-size:22px;
+    opacity:0.5;
+  }
+
+  .card-back{
+    background:linear-gradient(145deg, #1c2340, #0f1326);
+    border:1px solid var(--neon-blue);
+    transform:rotateY(180deg);
+    box-shadow:0 0 18px rgba(0,229,255,0.25) inset;
+  }
+
+  .card.matched .card-back{
+    border-color:var(--neon-green);
+    box-shadow:0 0 22px rgba(57,255,143,0.45) inset, 0 0 14px rgba(57,255,143,0.4);
+    animation:pop 0.4s ease;
+  }
+
+  .card:not(.flipped):not(.matched):active .card-inner{
+    transform:scale(0.94);
+  }
+
+  @keyframes pop{
+    0%{transform:rotateY(180deg) scale(1);}
+    50%{transform:rotateY(180deg) scale(1.12);}
+    100%{transform:rotateY(180deg) scale(1);}
+  }
+
+  @keyframes shake{
+    0%,100%{transform:translateX(0);}
+    25%{transform:translateX(-6px);}
+    75%{transform:translateX(6px);}
+  }
+  .card.wrong .card-inner{animation:shake 0.35s ease;}
+
+  /* ===================== CONTROLS ===================== */
+  .controls{
+    display:flex;
+    gap:12px;
+    margin-bottom:22px;
+  }
+
+  .btn{
+    border:none;
+    border-radius:12px;
+    padding:12px 22px;
+    font-size:14px;
+    font-weight:700;
+    cursor:pointer;
+    letter-spacing:0.5px;
+    transition:transform 0.15s ease, box-shadow 0.15s ease;
+  }
+
+  .btn:active{transform:scale(0.96);}
+
+  .btn-primary{
+    background:linear-gradient(90deg,var(--neon-pink),var(--neon-purple));
+    color:#fff;
+    box-shadow:0 0 18px rgba(255,46,154,0.4);
+  }
+
+  .btn-secondary{
+    background:var(--glass-bg);
+    color:var(--text-main);
+    border:1px solid var(--glass-border);
+    backdrop-filter:blur(8px);
+  }
+
+  /* ===================== AFFILIATE / CTA ===================== */
+  .cta-box{
+    width:100%;
+    max-width:520px;
+    background:linear-gradient(135deg, rgba(255,46,154,0.15), rgba(0,229,255,0.12));
+    border:1px solid var(--glass-border);
+    border-radius:18px;
+    padding:20px;
+    text-align:center;
+    margin-bottom:20px;
+    backdrop-filter:blur(10px);
+    position:relative;
+    overflow:hidden;
+  }
+
+  .cta-box::before{
+    content:"SPONSORED";
+    position:absolute;
+    top:10px;
+    right:12px;
+    font-size:9px;
+    letter-spacing:1.5px;
+    color:var(--text-dim);
+    border:1px solid var(--glass-border);
+    padding:2px 6px;
+    border-radius:20px;
+  }
+
+  .cta-box h3{
+    margin:6px 0 6px;
+    font-size:17px;
+    color:var(--text-main);
+  }
+
+  .cta-box p{
+    margin:0 0 14px;
+    font-size:13px;
+    color:var(--text-dim);
+  }
+
+  .cta-btn{
+    display:inline-block;
+    background:linear-gradient(90deg,var(--neon-green),var(--neon-blue));
+    color:#04121a;
+    font-weight:800;
+    padding:12px 28px;
+    border-radius:30px;
+    text-decoration:none;
+    font-size:14px;
+    box-shadow:0 0 22px rgba(57,255,143,0.4);
+    transition:transform 0.15s ease;
+  }
+  .cta-btn:active{transform:scale(0.96);}
+
+  /* ===================== BOTTOM AD ===================== */
+  .ad-bottom{
+    min-height:100px;
+    margin-bottom:10px;
+    padding:8px;
+  }
+
+  footer{
+    color:var(--text-dim);
+    font-size:11px;
+    text-align:center;
+    margin-top:6px;
+    opacity:0.6;
+  }
+
+  /* ===================== MODAL ===================== */
+  .modal-overlay{
+    position:fixed;
+    inset:0;
+    background:rgba(5,7,15,0.85);
+    backdrop-filter:blur(6px);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    z-index:100;
+    opacity:0;
+    pointer-events:none;
+    transition:opacity 0.3s ease;
+    padding:16px;
+  }
+
+  .modal-overlay.show{
+    opacity:1;
+    pointer-events:auto;
+  }
+
+  .modal{
+    width:100%;
+    max-width:420px;
+    background:linear-gradient(160deg, #171d38, #0d1024);
+    border:1px solid var(--glass-border);
+    border-radius:22px;
+    padding:26px 22px;
+    text-align:center;
+    transform:scale(0.85);
+    transition:transform 0.3s cubic-bezier(0.34,1.56,0.64,1);
+    box-shadow:0 0 60px rgba(162,89,255,0.25);
+  }
+
+  .modal-overlay.show .modal{transform:scale(1);}
+
+  .modal .emoji-burst{font-size:46px;margin-bottom:6px;}
+
+  .modal h2{
+    margin:0 0 6px;
+    background:linear-gradient(90deg,var(--neon-green),var(--neon-blue));
+    -webkit-background-clip:text;
+    background-clip:text;
+    color:transparent;
+    font-size:24px;
+  }
+
+  .modal p{
+    color:var(--text-dim);
+    margin:0 0 18px;
+    font-size:14px;
+  }
+
+  .modal-stats{
+    display:flex;
+    justify-content:center;
+    gap:24px;
+    margin-bottom:18px;
+  }
+
+  .modal-stats div{text-align:center;}
+  .modal-stats .value{font-size:20px;font-weight:800;color:var(--neon-pink);}
+  .modal-stats .label{font-size:10px;color:var(--text-dim);text-transform:uppercase;}
+
+  /* Interstitial ad slot inside the victory modal */
+  .ad-slot.ad-interstitial{
+    min-height:120px;
+    margin-bottom:18px;
+  }
+
+  .modal-actions{
+    display:flex;
+    gap:10px;
+    justify-content:center;
+  }
+
+  @media (max-width:380px){
+    .board{gap:7px;}
+    .stat-box .value{font-size:16px;}
+    .controls{flex-direction:column;width:100%;max-width:320px;}
+  }
+</style>
+</head>
+<body>
+
+  <!-- =================== TOP BANNER AD SLOT =================== -->
+  <div class="ad-slot ad-top" id="ad-top-slot">
+    <div>
+      Ad Space — 728x90 / Responsive<br>
+      <small>&lt;!-- Insert AdSense / Monetag / AdMob banner script here --&gt;</small>
+    </div>
+  </div>
+
+  <header>
+    <h1>NEON MEMORY MATCH</h1>
+    <p>Flip the cards. Find every pair. Beat your best score.</p>
+  </header>
+
+  <div class="stats">
+    <div class="stat-box" id="moves-box">
+      <div class="label">Moves</div>
+      <div class="value" id="moves-value">0</div>
+    </div>
+    <div class="stat-box" id="matches-box">
+      <div class="label">Matches</div>
+      <div class="value" id="matches-value">0/8</div>
+    </div>
+    <div class="stat-box" id="timer-box">
+      <div class="label">Time</div>
+      <div class="value" id="timer-value">00:00</div>
+    </div>
+  </div>
+
+  <div class="board" id="board"></div>
+
+  <div class="controls">
+    <button class="btn btn-primary" id="restart-btn">🔄 Restart Game</button>
+    <button class="btn btn-secondary" id="shuffle-btn">🔀 New Layout</button>
+  </div>
+
+  <!-- =================== AFFILIATE / OFFER CTA =================== -->
+  <div class="cta-box">
+    <h3>🎁 Unlock a Special Reward</h3>
+    <p>Check out this hand-picked offer while you play — new deals added weekly.</p>
+    <a href="#" class="cta-btn" id="affiliate-link" target="_blank" rel="noopener noreferrer sponsored">
+      Claim Offer →
+    </a>
+  </div>
+
+  <!-- =================== BOTTOM AD SLOT =================== -->
+  <div class="ad-slot ad-bottom" id="ad-bottom-slot">
+    <div>
+      Ad Space — 320x100 / Responsive<br>
+      <small>&lt;!-- Insert secondary ad unit script here --&gt;</small>
+    </div>
+  </div>
+
+  <footer>© Neon Memory Match — for demonstration purposes</footer>
+
+  <!-- =================== VICTORY / INTERSTITIAL MODAL =================== -->
+  <div class="modal-overlay" id="win-modal">
+    <div class="modal">
+      <div class="emoji-burst">🏆</div>
+      <h2>You Won!</h2>
+      <p>All pairs matched. Nice memory!</p>
+
+      <div class="modal-stats">
+        <div>
+          <div class="value" id="final-moves">0</div>
+          <div class="label">Moves</div>
+        </div>
+        <div>
+          <div class="value" id="final-time">00:00</div>
+          <div class="label">Time</div>
+        </div>
+      </div>
+
+      <!-- Space reserved for a full-screen interstitial / popunder ad before the next round -->
+      <div class="ad-slot ad-interstitial" id="ad-interstitial-slot">
+        <div>
+          Interstitial Ad Space<br>
+          <small>&lt;!-- Trigger Monetag/AdSense interstitial or popunder here before "Play Again" --&gt;</small>
+        </div>
+      </div>
+
+      <div class="modal-actions">
+        <button class="btn btn-primary" id="play-again-btn">▶ Play Again</button>
+        <button class="btn btn-secondary" id="close-modal-btn">Close</button>
+      </div>
+    </div>
+  </div>
+
+<script>
+(function(){
+  'use strict';
+
+  // ---------- Config ----------
+  const ICONS = ['🚀','🎮','🐙','🍕','🌟','🎧','🐸','🔥','🌈','💎','🎸','🍩','🦄','🍉','🎲','🧊'];
+  const GRID_PAIRS = 8; // 4x4 = 16 cards = 8 pairs
+
+  // ---------- State ----------
+  let deck = [];
+  let flippedCards = [];
+  let matchedCount = 0;
+  let moves = 0;
+  let lockBoard = false;
+  let timerInterval = null;
+  let secondsElapsed = 0;
+  let gameStarted = false;
+
+  // ---------- DOM refs ----------
+  const boardEl = document.getElementById('board');
+  const movesValueEl = document.getElementById('moves-value');
+  const matchesValueEl = document.getElementById('matches-value');
+  const timerValueEl = document.getElementById('timer-value');
+  const restartBtn = document.getElementById('restart-btn');
+  const shuffleBtn = document.getElementById('shuffle-btn');
+  const winModal = document.getElementById('win-modal');
+  const finalMovesEl = document.getElementById('final-moves');
+  const finalTimeEl = document.getElementById('final-time');
+  const playAgainBtn = document.getElementById('play-again-btn');
+  const closeModalBtn = document.getElementById('close-modal-btn');
+
+  // ---------- Helpers ----------
+  function shuffle(array){
+    for(let i = array.length - 1; i > 0; i--){
+      const j = Math.floor(Math.random() * (i + 1));
+      [array[i], array[j]] = [array[j], array[i]];
+    }
+    return array;
+  }
+
+  function formatTime(totalSeconds){
+    const m = Math.floor(totalSeconds / 60).toString().padStart(2,'0');
+    const s = (totalSeconds % 60).toString().padStart(2,'0');
+    return `${m}:${s}`;
+  }
+
+  function startTimer(){
+    if(timerInterval) return;
+    timerInterval = setInterval(() => {
+      secondsElapsed++;
+      timerValueEl.textContent = formatTime(secondsElapsed);
+    }, 1000);
+  }
+
+  function stopTimer(){
+    clearInterval(timerInterval);
+    timerInterval = null;
+  }
+
+  // ---------- Build board ----------
+  function buildDeck(){
+    const chosenIcons = shuffle([...ICONS]).slice(0, GRID_PAIRS);
+    deck = shuffle([...chosenIcons, ...chosenIcons]).map((icon, index) => ({
+      id: index,
+      icon,
+      isFlipped: false,
+      isMatched: false
+    }));
+  }
+
+  function renderBoard(){
+    boardEl.innerHTML = '';
+    deck.forEach(cardData => {
+      const card = document.createElement('div');
+      card.className = 'card';
+      card.dataset.id = cardData.id;
+
+      card.innerHTML = `
+        <div class="card-inner">
+          <div class="card-face card-front"></div>
+          <div class="card-face card-back">${cardData.icon}</div>
+        </div>
+      `;
+
+      card.addEventListener('click', () => handleCardClick(card, cardData));
+      boardEl.appendChild(card);
+    });
+  }
+
+  function resetStats(){
+    moves = 0;
+    matchedCount = 0;
+    secondsElapsed = 0;
+    flippedCards = [];
+    lockBoard = false;
+    gameStarted = false;
+    stopTimer();
+    movesValueEl.textContent = '0';
+    matchesValueEl.textContent = `0/${GRID_PAIRS}`;
+    timerValueEl.textContent = '00:00';
+  }
+
+  function initGame(){
+    resetStats();
+    buildDeck();
+    renderBoard();
+  }
+
+  // ---------- Game logic ----------
+  function handleCardClick(cardEl, cardData){
+    if(lockBoard) return;
+    if(cardEl.classList.contains('flipped') || cardEl.classList.contains('matched')) return;
+    if(flippedCards.length === 2) return;
+
+    if(!gameStarted){
+      gameStarted = true;
+      startTimer();
+    }
+
+    cardEl.classList.add('flipped');
+    flippedCards.push({ el: cardEl, data: cardData });
+
+    if(flippedCards.length === 2){
+      moves++;
+      movesValueEl.textContent = moves;
+      checkForMatch();
+    }
+  }
+
+  function checkForMatch(){
+    lockBoard = true;
+    const [first, second] = flippedCards;
+
+    if(first.data.icon === second.data.icon){
+      first.el.classList.add('matched');
+      second.el.classList.add('matched');
+      matchedCount++;
+      matchesValueEl.textContent = `${matchedCount}/${GRID_PAIRS}`;
+      resetFlipped();
+
+      if(matchedCount === GRID_PAIRS){
+        stopTimer();
+        setTimeout(showWinModal, 500);
+      }
+    } else {
+      first.el.classList.add('wrong');
+      second.el.classList.add('wrong');
+      setTimeout(() => {
+        first.el.classList.remove('flipped','wrong');
+        second.el.classList.remove('flipped','wrong');
+        resetFlipped();
+      }, 800);
+    }
+  }
+
+  function resetFlipped(){
+    flippedCards = [];
+    lockBoard = false;
+  }
+
+  // ---------- Modal ----------
+  function showWinModal(){
+    finalMovesEl.textContent = moves;
+    finalTimeEl.textContent = formatTime(secondsElapsed);
+    winModal.classList.add('show');
+  }
+
+  function hideWinModal(){
+    winModal.classList.remove('show');
+  }
+
+  // ---------- Events ----------
+  restartBtn.addEventListener('click', initGame);
+  shuffleBtn.addEventListener('click', initGame);
+  playAgainBtn.addEventListener('click', () => {
+    // Interstitial / popunder ad trigger point — call your ad SDK here
+    // e.g. showInterstitialAd().then(() => initGame());
+    hideWinModal();
+    initGame();
+  });
+  closeModalBtn.addEventListener('click', hideWinModal);
+  winModal.addEventListener('click', (e) => {
+    if(e.target === winModal) hideWinModal();
+  });
+
+  // ---------- Init ----------
+  initGame();
+})();
+</script>
+
+</body>
+</html>
